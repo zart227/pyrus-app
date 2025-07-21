@@ -1,6 +1,6 @@
 # Pyrus-app
 
-A web application with a FastAPI backend and a Vue.js frontend, containerized using Docker.
+A web application to interact with the Pyrus API, built with a FastAPI backend and a Vue.js frontend. The application is containerized using Docker.
 
 ## Technologies Used
 
