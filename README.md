@@ -1,36 +1,57 @@
-# Pyrus Tasks API
+# Pyrus-app
 
-FastAPI приложение для работы с задачами Pyrus.
+A web application with a FastAPI backend and a Vue.js frontend, containerized using Docker.
 
-## Установка
+## Technologies Used
 
-1. Клонируйте репозиторий
-2. Установите зависимости:
-```bash
-pip install -r requirements.txt
-```
+-   **Backend:** FastAPI
+-   **Frontend:** Vue.js
+-   **Web Server:** Nginx
+-   **Containerization:** Docker, Docker Compose
 
-3. Создайте файл `.env` и добавьте в него ваши учетные данные Pyrus:
-```
-PYRUS_LOGIN=your_login@pyrus.com
-PYRUS_SECURITY_KEY=your_security_key
-```
+## Getting Started
 
-## Запуск
+These instructions will get you a copy of the project up and running on your local machine for development and testing purposes.
 
-```bash
-uvicorn main:app --reload
-```
+### Prerequisites
 
-Приложение будет доступно по адресу: http://localhost:8000
+-   [Docker](https://docs.docker.com/get-docker/)
+-   [Docker Compose](https://docs.docker.com/compose/install/)
 
-## API Endpoints
+### Installation
 
-- `GET /tasks` - Получить список всех задач
-- `GET /tasks/{task_id}` - Получить конкретную задачу по ID
-- `GET /inbox` - Получить задачи из входящих
+1.  **Clone the repository**
+    
+    Replace `your-username` with your actual GitHub username.
+    ```sh
+    git clone https://github.com/your-username/Pyrus-app.git
+    cd Pyrus-app
+    ```
 
-## Документация API
+2.  **Create and configure the environment file**
 
-После запуска приложения, документация Swagger UI будет доступна по адресу:
-http://localhost:8000/docs 
+    Copy the example environment file and fill in the required values.
+    ```sh
+    cp .env.example .env
+    ```
+    Now, edit the `.env` file with your credentials.
+
+3.  **Build and run the containers**
+    ```sh
+    docker compose up --build -d
+    ```
+    The `-d` flag runs the containers in detached mode.
+
+4.  **Access the application**
+
+    Once the containers are running, you can access the application in your browser at:
+    [http://localhost](http://localhost)
+
+    -   The frontend is served directly.
+    -   The FastAPI backend is available under the `/api` prefix (e.g., `http://localhost/api/docs`).
+
+## Stopping the application
+To stop the application, run:
+```sh
+docker compose down
+``` 
