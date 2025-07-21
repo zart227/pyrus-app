@@ -1,0 +1,22 @@
+# Python
+venv/
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# Environment
+.env
+
+# Frontend
+frontend/node_modules/
+frontend/dist/
+
+# OS generated files
+.DS_Store
+*.swo
+*.swp
+*.swn
+
+# Logs
+*.log 
