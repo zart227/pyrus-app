@@ -21,11 +21,9 @@ These instructions will get you a copy of the project up and running on your loc
 ### Installation
 
 1.  **Clone the repository**
-    
-    Replace `your-username` with your actual GitHub username.
     ```sh
-    git clone https://github.com/your-username/Pyrus-app.git
-    cd Pyrus-app
+    git clone https://github.com/zart227/pyrus-app.git
+    cd pyrus-app
     ```
 
 2.  **Create and configure the environment file**
