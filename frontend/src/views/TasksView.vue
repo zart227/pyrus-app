@@ -94,7 +94,7 @@
 <script setup>
 import { ref, onMounted, computed } from 'vue'
 import { ElMessage } from 'element-plus'
-import axios from 'axios'
+import api from '../api'
 
 const tasks = ref([])
 const loading = ref(false)
@@ -110,7 +110,7 @@ const currentTask = ref({
 const fetchTasks = async () => {
   loading.value = true
   try {
-    const response = await axios.get('/api/inbox_full')
+    const response = await api.get('/inbox_full')
     tasks.value = response.data
   } catch (error) {
     ElMessage.error('Ошибка при загрузке задач')
@@ -189,7 +189,7 @@ const saveTaskChanges = async () => {
       field_updates: fieldUpdates
     }
 
-    await axios.post(`/api/tasks/${currentTask.value.id}/comment`, commentData)
+    await api.post(`/tasks/${currentTask.value.id}/comment`, commentData)
     ElMessage.success('Задача успешно обновлена')
     dialogVisible.value = false
     fetchTasks()
@@ -226,7 +226,7 @@ const closeSelectedTasks = async () => {
           }
         ]
       }
-      await axios.post(`/api/tasks/${task.id}/comment`, commentData)
+      await api.post(`/tasks/${task.id}/comment`, commentData)
     }
     ElMessage.success('Выбранные задачи успешно закрыты')
     fetchTasks()
@@ -269,7 +269,7 @@ const closeSelectedTasksWithEmailRemoval = async () => {
           }
         ]
       }
-      await axios.post(`/api/tasks/${task.id}/comment`, commentData)
+      await api.post(`/tasks/${task.id}/comment`, commentData)
     }
     ElMessage.success('Выбранные задачи успешно закрыты с удалением почты')
     fetchTasks()

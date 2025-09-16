@@ -1,4 +1,5 @@
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Depends
+from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from typing import List, Optional, Dict, Any
 from datetime import datetime, timezone
@@ -7,27 +8,53 @@ from dotenv import load_dotenv
 from pyrus import client
 import pyrus.models
 from collections import defaultdict
+from sqlalchemy.orm import Session
+
+from database import get_db, User
+from auth_routes import router as auth_router
+from auth_utils import get_current_active_user, get_current_active_user_from_cookie
 
 # Загрузка переменных окружения
 load_dotenv()
 
 app = FastAPI(title="Pyrus Tasks API")
 
-# Инициализация клиента Pyrus
-pyrus_client = client.PyrusAPI(
-    login=os.getenv("PYRUS_LOGIN"),
-    security_key=os.getenv("PYRUS_SECURITY_KEY")
+# Настройка CORS для работы с frontend
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=[
+        "http://localhost:5173", 
+        "http://localhost:3000", 
+        "http://localhost",
+        "http://localhost:8081",  # Frontend контейнер
+        "http://localhost:8082",   # Nginx прокси
+        "http://frontend:80",      # Внутренний адрес frontend
+    ],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
 )
 
-# Авторизация при запуске
-try:
-    auth_response = pyrus_client.auth()
-    if not auth_response.success:
-        print(f"Ошибка авторизации: {auth_response.error}")
-        raise Exception(f"Ошибка авторизации в Pyrus: {auth_response.error}")
-except Exception as e:
-    print(f"Исключение при авторизации: {str(e)}")
-    raise
+# Подключение роутов авторизации
+app.include_router(auth_router, prefix="/api")
+
+def get_pyrus_client(current_user: User = Depends(get_current_active_user_from_cookie)):
+    """Получение клиента Pyrus для текущего пользователя"""
+    # Используем учетные данные из базы данных
+    login = current_user.login
+    security_key = current_user.security_key
+    
+    pyrus_client = client.PyrusAPI(login=login, security_key=security_key)
+    
+    # Проверяем авторизацию
+    try:
+        auth_response = pyrus_client.auth()
+        if not auth_response.success:
+            raise HTTPException(status_code=401, detail=f"Ошибка авторизации в Pyrus: {auth_response.error}")
+    except Exception as e:
+        raise HTTPException(status_code=401, detail=f"Ошибка подключения к Pyrus: {str(e)}")
+    
+    return pyrus_client
 
 class TaskResponse(BaseModel):
     id: int
@@ -43,8 +70,8 @@ class TaskCommentRequest(BaseModel):
     action: Optional[str]
     field_updates: Optional[List[Dict[str, Any]]]
 
-@app.get("/tasks", response_model=List[TaskResponse])
-async def get_tasks():
+@app.get("/api/tasks", response_model=List[TaskResponse])
+async def get_tasks(pyrus_client: client.PyrusAPI = Depends(get_pyrus_client)):
     """
     Получить список всех задач
     """
@@ -70,8 +97,8 @@ async def get_tasks():
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
-@app.get("/tasks/{task_id}")
-async def get_task(task_id: int):
+@app.get("/api/tasks/{task_id}")
+async def get_task(task_id: int, pyrus_client: client.PyrusAPI = Depends(get_pyrus_client)):
     """
     Получить конкретную задачу по ID
     """
@@ -83,8 +110,8 @@ async def get_task(task_id: int):
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
-@app.get("/inbox")
-async def get_inbox(tasks_count: int = 50):
+@app.get("/api/inbox")
+async def get_inbox(tasks_count: int = 50, pyrus_client: client.PyrusAPI = Depends(get_pyrus_client)):
     """
     Получить задачи из входящих
     """
@@ -97,8 +124,8 @@ async def get_inbox(tasks_count: int = 50):
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
-@app.get("/inbox_full")
-async def get_inbox_full(tasks_count: int = 100):
+@app.get("/api/inbox_full")
+async def get_inbox_full(tasks_count: int = 100, pyrus_client: client.PyrusAPI = Depends(get_pyrus_client)):
     """
     Получить inbox с расширенной информацией (дедлайн, этап, заморозка, цвет)
     """
@@ -186,8 +213,8 @@ async def get_inbox_full(tasks_count: int = 100):
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
-@app.post("/tasks/{task_id}/comment")
-async def comment_task(task_id: int, comment_request: TaskCommentRequest):
+@app.post("/api/tasks/{task_id}/comment")
+async def comment_task(task_id: int, comment_request: TaskCommentRequest, pyrus_client: client.PyrusAPI = Depends(get_pyrus_client)):
     """
     Добавить комментарий к задаче
     """

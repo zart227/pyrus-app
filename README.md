@@ -1,13 +1,23 @@
 # Pyrus-app
 
-A web application to interact with the Pyrus API, built with a FastAPI backend and a Vue.js frontend. The application is containerized using Docker.
+A web application to interact with the Pyrus API, built with a FastAPI backend and a Vue.js frontend. The application supports multiple users with authentication and is containerized using Docker.
 
 ## Technologies Used
 
--   **Backend:** FastAPI
--   **Frontend:** Vue.js
+-   **Backend:** FastAPI, SQLAlchemy, JWT Authentication
+-   **Frontend:** Vue.js, Element Plus, Pinia
+-   **Database:** PostgreSQL (Docker) / SQLite (fallback)
 -   **Web Server:** Nginx
 -   **Containerization:** Docker, Docker Compose
+-   **Migrations:** Alembic
+
+## Features
+
+- **Multi-user authentication** with JWT tokens and cookies
+- **User registration** with Pyrus API credentials validation
+- **Session management** with automatic token refresh
+- **Task management** with user-specific access
+- **Responsive UI** with modern design
 
 ## Getting Started with Docker
 
@@ -32,7 +42,12 @@ These instructions will get you a copy of the project up and running on your loc
     ```sh
     cp .env.example .env
     ```
-    Now, edit the `.env` file with your credentials.
+    Now, edit the `.env` file with your credentials:
+    ```
+    PYRUS_LOGIN=your-email@example.com
+    PYRUS_SECURITY_KEY=your-pyrus-security-key
+    SECRET_KEY=your-super-secret-jwt-key-change-in-production-12345
+    ```
 
 3.  **Build and run the containers**
     ```sh
@@ -40,13 +55,21 @@ These instructions will get you a copy of the project up and running on your loc
     ```
     The `-d` flag runs the containers in detached mode.
 
-4.  **Access the application**
+4.  **Initialize the first user (optional)**
+    
+    If you want to migrate your existing single-user setup to the new multi-user system:
+    ```sh
+    docker compose exec backend python init_user.py
+    ```
+
+5.  **Access the application**
 
     Once the containers are running, you can access the application in your browser at:
-    [http://localhost](http://localhost)
-
-    -   The frontend is served directly.
-    -   The FastAPI backend is available under the `/api` prefix (e.g., `http://localhost/api/docs`).
+    - **Main application (Nginx):** [http://localhost:8082](http://localhost:8082)
+    - **Frontend only:** [http://localhost:8081](http://localhost:8081)
+    - **Backend API:** [http://localhost:8000](http://localhost:8000)
+    - **API Documentation:** [http://localhost:8000/docs](http://localhost:8000/docs)
+    - **PostgreSQL Database:** localhost:5433
 
 ### Stopping the application
 To stop the application, run:
@@ -98,6 +121,13 @@ Follow these instructions to run the application on your local machine without D
         ./setup.sh
         ```
 
+4.  **Initialize the first user (optional)**
+    
+    If you want to migrate your existing single-user setup to the new multi-user system:
+    ```sh
+    python init_user.py
+    ```
+
 ### Running the Application
 
 After setup is complete, run the start script for your operating system. This will launch both the backend and frontend servers.
@@ -123,4 +153,31 @@ Once running, you can access:
 
 ### Stopping the Application
 
-To stop both servers, return to the terminal where the start script is running and press `Ctrl+C`. 
+To stop both servers, return to the terminal where the start script is running and press `Ctrl+C`.
+
+## User Management
+
+### Registration
+
+New users can register by providing their Pyrus API credentials (login and security key). The system validates these credentials against the Pyrus API before creating the user account.
+
+### Authentication
+
+Users authenticate using their Pyrus credentials. The system uses JWT tokens stored in HTTP-only cookies for session management.
+
+### Multiple Users
+
+The application now supports multiple users, each with their own Pyrus API credentials. Users can only access their own tasks and data.
+
+## API Documentation
+
+Once the application is running, you can access the interactive API documentation at:
+- **Swagger UI:** `http://localhost/api/docs`
+- **ReDoc:** `http://localhost/api/redoc`
+
+## Security Notes
+
+- JWT tokens are stored in HTTP-only cookies for security
+- User credentials are validated against the Pyrus API during registration
+- All API endpoints require authentication except for login/register
+- CORS is configured for development; update origins for production 

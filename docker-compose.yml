@@ -1,4 +1,21 @@
 services:
+  # PostgreSQL база данных
+  db:
+    image: postgres:15-alpine
+    environment:
+      POSTGRES_DB: pyrus_db
+      POSTGRES_USER: pyrus_user
+      POSTGRES_PASSWORD: pyrus_password
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    ports:
+      - "5433:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U pyrus_user -d pyrus_db"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
   backend:
     build:
       context: .
@@ -9,20 +26,37 @@ services:
       - "8000:8000"
     env_file:
       - .env
+    environment:
+      DATABASE_URL: postgresql://pyrus_user:pyrus_password@db:5432/pyrus_db
+    depends_on:
+      db:
+        condition: service_healthy
+    command: >
+      sh -c "
+        python -c 'from database import engine; from sqlalchemy import text; engine.connect().execute(text(\"SELECT 1\"))' &&
+        python init_user.py &&
+        python main.py
+      "
 
   frontend:
     build:
       context: .
       dockerfile: Dockerfile.frontend
     ports:
-      - "8080:80"
+      - "8081:80"
+    depends_on:
+      - backend
 
   nginx:
     image: nginx:stable-alpine
     ports:
-      - "80:80"
+      - "8082:80"
     volumes:
       - ./nginx.conf:/etc/nginx/nginx.conf
     depends_on:
       - backend
-      - frontend 
+      - frontend
+    restart: unless-stopped
+
+volumes:
+  postgres_data: 
