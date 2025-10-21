@@ -20,4 +20,9 @@ frontend/dist/
 *.swn
 
 # Logs
-*.log 
+*.log
+
+# Temporary cookies
+cookies.txt
+cookies_*.txt
+test_cookies.txt 
