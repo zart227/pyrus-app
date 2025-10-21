@@ -22,10 +22,18 @@
         @selection-change="handleSelectionChange"
         style="width: 100%">
         <el-table-column type="selection" width="55" />
-        <el-table-column prop="id" label="ID" width="100" />
+        <el-table-column prop="id" label="ID" width="100">
+          <template #default="scope">
+            <span class="clickable-cell" @click="openTaskFormDialog(scope.row)">
+              {{ scope.row.id }}
+            </span>
+          </template>
+        </el-table-column>
         <el-table-column prop="text" label="Текст" show-overflow-tooltip min-width="300">
           <template #default="scope">
-            {{ scope.row.text || 'Нет текста' }}
+            <span class="clickable-cell" @click="openTaskFormDialog(scope.row)">
+              {{ scope.row.text || 'Нет текста' }}
+            </span>
           </template>
         </el-table-column>
         <el-table-column prop="step" label="Этап" width="140">
@@ -39,61 +47,35 @@
             <span>{{ deadlineText(scope.row) }}</span>
           </template>
         </el-table-column>
-        <!-- <el-table-column label="Заморожена" width="120">
-          <template #default="scope">
-            <span v-if="scope.row.is_frozen" class="frozen-label">Да</span>
-            <span v-else>Нет</span>
-          </template>
-        </el-table-column> -->
-        <!-- <el-table-column label="Действия" width="120" fixed="right">
-          <template #default="scope">
-            <el-button @click="openTaskDialog(scope.row)" type="primary" size="small">
-              Редактировать
-            </el-button>
-          </template>
-        </el-table-column> -->
+
       </el-table>
     </el-card>
 
     <!-- Диалог редактирования задачи -->
     <el-dialog
-      v-model="dialogVisible"
+      v-model="taskFormDialogVisible"
       title="Редактирование задачи"
-      width="50%">
-      <el-form :model="currentTask" label-width="120px">
-        <el-form-item label="Площадка">
-          <el-select v-model="currentTask.platform" placeholder="Выберите площадку">
-            <el-option label="Nano" value="81073933" />
-          </el-select>
-        </el-form-item>
-        <el-form-item label="Решение">
-          <el-input v-model="currentTask.solution" type="textarea" rows="3" />
-        </el-form-item>
-        <el-form-item label="Срок">
-          <el-date-picker
-            v-model="currentTask.due_date"
-            type="datetime"
-            placeholder="Выберите срок"
-            format="DD.MM.YYYY HH:mm"
-            value-format="YYYY-MM-DDTHH:mm:ssZ"
-          />
-        </el-form-item>
-      </el-form>
-      <template #footer>
-        <span class="dialog-footer">
-          <el-button @click="dialogVisible = false">Отмена</el-button>
-          <el-button type="primary" @click="saveTaskChanges">
-            Сохранить
-          </el-button>
-        </span>
-      </template>
+      width="80%"
+      :close-on-click-modal="false">
+      <TaskForm
+        v-if="taskFormDialogVisible"
+        :form-id="selectedFormId"
+        :task-id="selectedTaskId"
+        :current-values="selectedTaskValues"
+        :task-comments="selectedTaskComments"
+        :task-attachments="selectedTaskAttachments"
+        @close="closeTaskFormDialog"
+        @saved="handleTaskSaved" />
     </el-dialog>
+
+
   </div>
 </template>
 
 <script setup>
 import { ref, onMounted, computed } from 'vue'
 import { ElMessage } from 'element-plus'
+import TaskForm from '../components/TaskForm.vue'
 import api from '../api'
 
 const tasks = ref([])
@@ -106,6 +88,14 @@ const currentTask = ref({
   solution: '',
   due_date: null
 })
+
+// Новые переменные для формы задачи
+const taskFormDialogVisible = ref(false)
+const selectedFormId = ref(null)
+const selectedTaskId = ref(null)
+const selectedTaskValues = ref({})
+const selectedTaskComments = ref([])
+const selectedTaskAttachments = ref([])
 
 const fetchTasks = async () => {
   loading.value = true
@@ -131,72 +121,6 @@ const sortedTasks = computed(() => {
 
 const handleSelectionChange = (selection) => {
   selectedTasks.value = selection
-}
-
-const openTaskDialog = (task) => {
-  currentTask.value = {
-    id: task.id,
-    platform: '',
-    solution: '',
-    due_date: task.due ? new Date(task.due) : null
-  }
-  dialogVisible.value = true
-}
-
-const saveTaskChanges = async () => {
-  try {
-    const fieldUpdates = []
-    
-    // Добавляем площадку только если она выбрана
-    if (currentTask.value.platform) {
-      fieldUpdates.push({
-        id: 41,
-        type: "catalog",
-        name: "Площадка/Place",
-        value: {
-          item_id: parseInt(currentTask.value.platform),
-          item_ids: [parseInt(currentTask.value.platform)],
-          headers: ["Площадки"],
-          values: ["Nano"],
-          rows: [["Nano"]]
-        }
-      })
-    }
-
-    // Добавляем решение только если оно заполнено
-    if (currentTask.value.solution) {
-      fieldUpdates.push({
-        id: 27,
-        type: "text",
-        name: "Решение/Solution",
-        value: currentTask.value.solution
-      })
-    }
-
-    // Добавляем срок только если он выбран
-    if (currentTask.value.due_date) {
-      fieldUpdates.push({
-        id: 42,
-        type: "due_date_time",
-        name: "Срок/Term",
-        value: currentTask.value.due_date
-      })
-    }
-
-    const commentData = {
-      text: currentTask.value.solution ? `Решение: ${currentTask.value.solution}` : 'Обновление задачи',
-      action: "reopened",
-      field_updates: fieldUpdates
-    }
-
-    await api.post(`/tasks/${currentTask.value.id}/comment`, commentData)
-    ElMessage.success('Задача успешно обновлена')
-    dialogVisible.value = false
-    fetchTasks()
-  } catch (error) {
-    ElMessage.error('Ошибка при сохранении изменений')
-    console.error(error)
-  }
 }
 
 const closeSelectedTasks = async () => {
@@ -300,6 +224,37 @@ function rowStyle({ row }) {
   return {}
 }
 
+// Методы для работы с формой задачи
+const openTaskFormDialog = async (task) => {
+  try {
+    // Получаем данные формы для задачи
+    const response = await api.get(`/tasks/${task.id}/form`)
+    selectedFormId.value = response.data.form.form_id
+    selectedTaskId.value = task.id
+    selectedTaskValues.value = response.data.current_values
+    selectedTaskComments.value = response.data.comments || []
+    selectedTaskAttachments.value = response.data.attachments || []
+    taskFormDialogVisible.value = true
+  } catch (error) {
+    ElMessage.error('Ошибка при загрузке формы задачи')
+    console.error(error)
+  }
+}
+
+const closeTaskFormDialog = () => {
+  taskFormDialogVisible.value = false
+  selectedFormId.value = null
+  selectedTaskId.value = null
+  selectedTaskValues.value = {}
+  selectedTaskComments.value = []
+  selectedTaskAttachments.value = []
+}
+
+const handleTaskSaved = () => {
+  // Обновляем список задач после сохранения
+  fetchTasks()
+}
+
 onMounted(() => {
   fetchTasks()
 })
@@ -331,5 +286,16 @@ onMounted(() => {
 .frozen-label {
   color: #2366a8;
   font-weight: bold;
+}
+
+.clickable-cell {
+  cursor: pointer;
+  color: #409EFF;
+  transition: color 0.3s;
+}
+
+.clickable-cell:hover {
+  color: #66b1ff;
+  text-decoration: underline;
 }
 </style> 
