@@ -3,7 +3,9 @@
     <el-container>
       <el-header>
         <div class="header-content">
-          <h1>Pyrus Tasks</h1>
+          <div class="header-left">
+            <h1>Pyrus Tasks</h1>
+          </div>
           <UserInfo v-if="authStore.isLoggedIn" />
         </div>
       </el-header>
@@ -38,6 +40,33 @@ onMounted(async () => {
   align-items: center;
   justify-content: space-between;
   width: 100%;
+}
+
+.header-left {
+  display: flex;
+  align-items: center;
+  gap: 30px;
+}
+
+.main-nav {
+  display: flex;
+  gap: 20px;
+}
+
+.nav-link {
+  color: white;
+  text-decoration: none;
+  padding: 8px 16px;
+  border-radius: 4px;
+  transition: background-color 0.3s;
+}
+
+.nav-link:hover {
+  background-color: rgba(255, 255, 255, 0.1);
+}
+
+.nav-link.router-link-active {
+  background-color: rgba(255, 255, 255, 0.2);
 }
 
 .el-header {
