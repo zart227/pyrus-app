@@ -12,13 +12,14 @@
         :rules="rules" 
         ref="loginFormRef"
         @submit.prevent="handleLogin"
-        label-width="120px"
+        label-position="top"
       >
         <el-form-item label="Логин" prop="login">
           <el-input 
             v-model="loginForm.login" 
             placeholder="Введите ваш email"
             :prefix-icon="User"
+            size="large"
           />
         </el-form-item>
         
@@ -29,24 +30,27 @@
             placeholder="Введите ключ безопасности"
             :prefix-icon="Lock"
             show-password
+            size="large"
           />
         </el-form-item>
         
-        <el-form-item>
+        <el-form-item style="margin-bottom: 10px;">
           <el-button 
             type="primary" 
             @click="handleLogin"
             :loading="loading"
+            size="large"
             style="width: 100%"
           >
             Войти
           </el-button>
         </el-form-item>
         
-        <el-form-item>
+        <el-form-item style="margin-bottom: 0;">
           <el-button 
             type="default" 
             @click="showRegister = true"
+            size="large"
             style="width: 100%"
           >
             Регистрация
@@ -73,13 +77,14 @@
         :model="registerForm" 
         :rules="registerRules" 
         ref="registerFormRef"
-        label-width="120px"
+        label-position="top"
       >
         <el-form-item label="Логин" prop="login">
           <el-input 
             v-model="registerForm.login" 
             placeholder="Введите ваш email"
             :prefix-icon="User"
+            size="large"
           />
         </el-form-item>
         
@@ -90,16 +95,23 @@
             placeholder="Введите ключ безопасности"
             :prefix-icon="Lock"
             show-password
+            size="large"
           />
         </el-form-item>
       </el-form>
       
       <template #footer>
-        <el-button @click="showRegister = false">Отмена</el-button>
+        <el-button 
+          @click="showRegister = false"
+          size="large"
+        >
+          Отмена
+        </el-button>
         <el-button 
           type="primary" 
           @click="handleRegister"
           :loading="registerLoading"
+          size="large"
         >
           Зарегистрироваться
         </el-button>
@@ -226,12 +238,22 @@ const handleRegister = async () => {
   align-items: center;
   min-height: 100vh;
   background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  padding: 20px;
 }
 
 .login-card {
-  width: 400px;
+  width: 100%;
+  max-width: 420px;
   box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
   border-radius: 12px;
+}
+
+.login-card :deep(.el-card__header) {
+  padding: 24px;
+}
+
+.login-card :deep(.el-card__body) {
+  padding: 24px;
 }
 
 .card-header {
@@ -241,5 +263,22 @@ const handleRegister = async () => {
 .card-header h2 {
   margin: 0;
   color: #333;
+  font-size: 24px;
+  font-weight: 600;
+}
+
+:deep(.el-form-item__label) {
+  font-weight: 500;
+  color: #606266;
+  margin-bottom: 8px;
+}
+
+:deep(.el-input__inner) {
+  border-radius: 8px;
+}
+
+:deep(.el-button) {
+  border-radius: 8px;
+  font-weight: 500;
 }
 </style>
