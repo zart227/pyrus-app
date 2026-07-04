@@ -180,4 +180,80 @@ Once the application is running, you can access the interactive API documentatio
 - JWT tokens are stored in HTTP-only cookies for security
 - User credentials are validated against the Pyrus API during registration
 - All API endpoints require authentication except for login/register
-- CORS is configured for development; update origins for production 
+- CORS is configured for development; update origins for production
+
+## Production Deployment on Corporate Network
+
+### Deploy at `/pyrus` subpath
+
+To make the application accessible within your corporate network at `http://server-address/pyrus/`, follow these steps:
+
+#### Quick Start (3 steps)
+
+1. **Install Nginx on the host:**
+   ```bash
+   sudo apt update && sudo apt install -y nginx
+   ```
+
+2. **Configure reverse proxy:**
+   ```bash
+   sudo cp nginx-host.conf /etc/nginx/sites-available/pyrus
+   sudo ln -s /etc/nginx/sites-available/pyrus /etc/nginx/sites-enabled/
+   sudo nginx -t && sudo systemctl restart nginx
+   ```
+
+3. **Start the application:**
+   ```bash
+   ./prod.sh up
+   ```
+
+Your application will be available at: `http://your-server-address/pyrus/`
+
+#### Automated Setup
+
+Alternatively, use the automated setup script:
+```bash
+sudo ./SETUP_COMMANDS.sh
+./prod.sh up
+```
+
+#### Management Commands
+
+```bash
+./prod.sh up       # Start production mode
+./prod.sh down     # Stop containers
+./prod.sh logs     # View logs
+./prod.sh ps       # Container status
+./prod.sh restart  # Restart containers
+./prod.sh rebuild  # Rebuild and restart
+./prod.sh dev      # Switch to dev mode
+```
+
+#### Development vs Production
+
+- **Development mode:** `./dev.sh up` - Hot reload, port 8081 (Vite dev server)
+- **Production mode:** `./prod.sh up` - Optimized build, ready for corporate network
+
+#### Documentation
+
+- 📘 **Quick Start:** See `QUICKSTART.md`
+- 📚 **Detailed Guide:** See `INSTALL.md` (includes troubleshooting, security, backup)
+- 📝 **Changes Log:** See `CHANGES.md`
+
+#### Architecture
+
+```
+Corporate Network → Nginx (host:80) → /pyrus → Docker Nginx (8082) → Backend/Frontend
+```
+
+#### Firewall Configuration
+
+Open port 80 for your corporate network:
+```bash
+sudo ufw allow 80/tcp
+```
+
+Or for specific IP range:
+```bash
+sudo ufw allow from 192.168.0.0/16 to any port 80 proto tcp
+``` 
