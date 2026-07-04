@@ -26,6 +26,28 @@ const api = axios.create({
   withCredentials: true // Важно для работы с куками
 })
 
+let isRefreshing = false
+let failedQueue = []
+
+const processQueue = (error) => {
+  failedQueue.forEach(({ resolve, reject }) => {
+    if (error) {
+      reject(error)
+    } else {
+      resolve()
+    }
+  })
+  failedQueue = []
+}
+
+const redirectToLogin = () => {
+  window.location.href = `${import.meta.env.BASE_URL}login`
+}
+
+const isAuthRequest = (url = '') => {
+  return url.includes('/auth/login') || url.includes('/auth/refresh')
+}
+
 // Интерцептор для добавления токена авторизации
 api.interceptors.request.use(
   (config) => {
@@ -40,15 +62,40 @@ api.interceptors.request.use(
   }
 )
 
-// Интерцептор для обработки ошибок авторизации
+// Интерцептор для обновления токена при истечении сессии
 api.interceptors.response.use(
   (response) => response,
-  (error) => {
-    if (error.response?.status === 401) {
-      // Если получили 401, перенаправляем на страницу входа
-      window.location.href = '/login'
+  async (error) => {
+    const originalRequest = error.config
+
+    if (error.response?.status !== 401 || !originalRequest || originalRequest._retry) {
+      return Promise.reject(error)
     }
-    return Promise.reject(error)
+
+    if (isAuthRequest(originalRequest.url)) {
+      return Promise.reject(error)
+    }
+
+    if (isRefreshing) {
+      return new Promise((resolve, reject) => {
+        failedQueue.push({ resolve, reject })
+      }).then(() => api(originalRequest))
+    }
+
+    originalRequest._retry = true
+    isRefreshing = true
+
+    try {
+      await api.post('/auth/refresh')
+      processQueue(null)
+      return api(originalRequest)
+    } catch (refreshError) {
+      processQueue(refreshError)
+      redirectToLogin()
+      return Promise.reject(refreshError)
+    } finally {
+      isRefreshing = false
+    }
   }
 )
 

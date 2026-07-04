@@ -1,11 +1,14 @@
 import { defineStore } from 'pinia'
 import api from '../api'
 
+let refreshTimerId = null
+
 export const useAuthStore = defineStore('auth', {
   state: () => ({
     user: null,
     token: null,
-    isAuthenticated: false
+    isAuthenticated: false,
+    tokenExpiresIn: null
   }),
 
   getters: {
@@ -21,10 +24,11 @@ export const useAuthStore = defineStore('auth', {
         })
         
         this.token = response.data.access_token
+        this.tokenExpiresIn = response.data.expires_in
         this.isAuthenticated = true
         
-        // Получаем информацию о пользователе
         await this.fetchUser()
+        this.startTokenRefreshTimer()
         
         return { success: true }
       } catch (error) {
@@ -59,8 +63,38 @@ export const useAuthStore = defineStore('auth', {
         this.user = response.data
       } catch (error) {
         console.error('Fetch user error:', error)
-        // Просто выбрасываем ошибку, не вызываем logout
         throw error
+      }
+    },
+
+    async refreshSession() {
+      const response = await api.post('/auth/refresh')
+      this.token = response.data.access_token
+      this.tokenExpiresIn = response.data.expires_in
+      this.isAuthenticated = true
+      return response.data
+    },
+
+    startTokenRefreshTimer() {
+      this.stopTokenRefreshTimer()
+
+      const expiresIn = this.tokenExpiresIn || 480 * 60
+      const refreshInMs = Math.max((expiresIn - 300) * 1000, 60 * 1000)
+
+      refreshTimerId = setInterval(async () => {
+        try {
+          await this.refreshSession()
+        } catch (error) {
+          console.error('Token refresh failed:', error)
+          this.stopTokenRefreshTimer()
+        }
+      }, refreshInMs)
+    },
+
+    stopTokenRefreshTimer() {
+      if (refreshTimerId) {
+        clearInterval(refreshTimerId)
+        refreshTimerId = null
       }
     },
 
@@ -70,27 +104,37 @@ export const useAuthStore = defineStore('auth', {
       } catch (error) {
         console.error('Logout error:', error)
       } finally {
+        this.stopTokenRefreshTimer()
         this.user = null
         this.token = null
+        this.tokenExpiresIn = null
         this.isAuthenticated = false
       }
     },
 
-    // Проверка авторизации при загрузке приложения
     async checkAuth() {
       const token = this.getTokenFromCookie()
       if (token) {
         this.token = token
         try {
           await this.fetchUser()
-          // Только после успешного получения пользователя устанавливаем isAuthenticated
           this.isAuthenticated = true
+          this.startTokenRefreshTimer()
         } catch (error) {
           console.error('Auth check failed:', error)
-          // Если не удалось получить пользователя, сбрасываем состояние
-          this.user = null
-          this.token = null
-          this.isAuthenticated = false
+          try {
+            await this.refreshSession()
+            await this.fetchUser()
+            this.isAuthenticated = true
+            this.startTokenRefreshTimer()
+          } catch (refreshError) {
+            console.error('Auth refresh on startup failed:', refreshError)
+            this.user = null
+            this.token = null
+            this.tokenExpiresIn = null
+            this.isAuthenticated = false
+            this.stopTokenRefreshTimer()
+          }
         }
       }
     },
@@ -100,7 +144,6 @@ export const useAuthStore = defineStore('auth', {
       for (let cookie of cookies) {
         const [name, value] = cookie.trim().split('=')
         if (name === 'access_token') {
-          // Убираем кавычки и префикс "Bearer " если есть
           let token = value.replace(/"/g, '')
           if (token.startsWith('Bearer ')) {
             token = token.substring(7)
