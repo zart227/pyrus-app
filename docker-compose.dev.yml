@@ -37,7 +37,7 @@ services:
     command: >
       sh -c "
         python -c 'from database import engine; from sqlalchemy import text; engine.connect().execute(text(\"SELECT 1\"))' &&
-        python init_user.py &&
+        (python init_user.py || true) &&
         uvicorn main:app --host 0.0.0.0 --port 8000 --reload
       "
 

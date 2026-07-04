@@ -14,15 +14,16 @@ sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 from database import engine, User, SessionLocal
 
 def init_first_user():
-    """Инициализация первого пользователя из .env файла"""
+    """Инициализация первого пользователя из .env файла (опционально)"""
     load_dotenv()
     
     login = os.getenv("PYRUS_LOGIN")
     security_key = os.getenv("PYRUS_SECURITY_KEY")
     
     if not login or not security_key:
-        print("Ошибка: PYRUS_LOGIN и PYRUS_SECURITY_KEY должны быть установлены в .env файле")
-        return False
+        print("ℹ️  PYRUS_LOGIN и PYRUS_SECURITY_KEY не установлены - пропускаем инициализацию")
+        print("ℹ️  Используйте регистрацию через веб-интерфейс")
+        return True  # Не ошибка, просто пропускаем
     
     # Проверяем валидность учетных данных
     try:

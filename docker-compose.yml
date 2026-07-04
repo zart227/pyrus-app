@@ -34,7 +34,7 @@ services:
     command: >
       sh -c "
         python -c 'from database import engine; from sqlalchemy import text; engine.connect().execute(text(\"SELECT 1\"))' &&
-        python init_user.py &&
+        (python init_user.py || true) &&
         python main.py
       "
 
@@ -42,6 +42,11 @@ services:
     build:
       context: .
       dockerfile: Dockerfile.frontend
+      args:
+        - BUILDKIT_INLINE_CACHE=1
+    dns:
+      - 8.8.8.8
+      - 8.8.4.4
     ports:
       - "8081:80"
     depends_on:

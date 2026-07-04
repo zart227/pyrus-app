@@ -784,3 +784,4 @@ async def get_task_form_data(task_id: int, pyrus_client: client.PyrusAPI = Depen
 
 if __name__ == "__main__":
     import uvicorn
+    uvicorn.run(app, host="0.0.0.0", port=8000)
