@@ -4,7 +4,7 @@ import TasksView from '../views/TasksView.vue'
 import LoginView from '../views/LoginView.vue'
 
 const router = createRouter({
-  history: createWebHistory('/'),
+  history: createWebHistory('/pyrus/'),
   routes: [
     {
       path: '/login',

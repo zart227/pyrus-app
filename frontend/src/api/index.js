@@ -2,11 +2,20 @@ import axios from 'axios'
 
 // Определяем базовый URL в зависимости от окружения
 const getBaseURL = () => {
-  // В продакшене через Nginx используем относительный путь
-  if (window.location.port === '8082') {
+  const port = window.location.port
+  const pathname = window.location.pathname
+  
+  // Production через Nginx (порт 80 или путь начинается с /pyrus/)
+  if (port === '' || pathname.startsWith('/pyrus/')) {
+    return '/pyrus/api'
+  }
+  
+  // Прямой доступ к nginx контейнеру (порт 8082)
+  if (port === '8082') {
     return '/api'
   }
-  // В разработке или прямом доступе к frontend используем полный URL
+  
+  // Development режим (Vite dev server на порту 5173 или 8081)
   return 'http://localhost:8000/api'
 }
 
