@@ -51,9 +51,11 @@ def get_pyrus_client(current_user: User = Depends(get_current_active_user_from_c
     try:
         auth_response = pyrus_client.auth()
         if not auth_response.success:
-            raise HTTPException(status_code=401, detail=f"Ошибка авторизации в Pyrus: {auth_response.error}")
+            raise HTTPException(status_code=502, detail=f"Ошибка авторизации в Pyrus: {auth_response.error}")
+    except HTTPException:
+        raise
     except Exception as e:
-        raise HTTPException(status_code=401, detail=f"Ошибка подключения к Pyrus: {str(e)}")
+        raise HTTPException(status_code=502, detail=f"Ошибка подключения к Pyrus: {str(e)}")
     
     return pyrus_client
 

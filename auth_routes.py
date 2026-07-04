@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException, status, Response
+from fastapi import APIRouter, Depends, HTTPException, status, Response, Request
 from fastapi.security import HTTPBearer
 from sqlalchemy.orm import Session
 from datetime import datetime, timedelta
@@ -7,9 +7,14 @@ from pyrus import client
 from database import get_db, User
 from schemas import UserCreate, UserLogin, UserResponse, Token
 from auth_utils import (
-    create_access_token, 
-    get_current_active_user, 
+    create_access_token,
+    create_refresh_token,
+    get_current_active_user,
     get_current_active_user_from_cookie,
+    get_refresh_token_from_cookie,
+    verify_refresh_token,
+    set_auth_cookies,
+    clear_auth_cookies,
     ACCESS_TOKEN_EXPIRE_MINUTES,
     verify_password,
     get_password_hash
@@ -84,36 +89,61 @@ async def login(user: UserLogin, response: Response, db: Session = Depends(get_d
             detail="Пользователь неактивен"
         )
     
-    # Создаем токен
+    # Создаем токены
     access_token_expires = timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
     access_token = create_access_token(
         data={"sub": db_user.login}, expires_delta=access_token_expires
     )
+    refresh_token = create_refresh_token(data={"sub": db_user.login})
     
     # Обновляем время последнего входа
     db_user.last_login = datetime.utcnow()
     db.commit()
     
-    # Устанавливаем куки
-    response.set_cookie(
-        key="access_token",
-        value=f"Bearer {access_token}",
-        max_age=ACCESS_TOKEN_EXPIRE_MINUTES * 60,
-        httponly=False,  # Разрешаем доступ из JavaScript
-        secure=False,  # В продакшене должно быть True для HTTPS
-        samesite="lax",  # Возвращаем "lax" для локальной разработки
-        # Убираем domain для работы с localhost на разных портах
-    )
+    set_auth_cookies(response, access_token, refresh_token)
     
-    return {"access_token": access_token, "token_type": "bearer"}
+    return {
+        "access_token": access_token,
+        "token_type": "bearer",
+        "expires_in": ACCESS_TOKEN_EXPIRE_MINUTES * 60,
+    }
+
+@router.post("/refresh", response_model=Token)
+async def refresh_token(request: Request, response: Response, db: Session = Depends(get_db)):
+    """Обновление access-токена по refresh-токену"""
+    credentials_exception = HTTPException(
+        status_code=status.HTTP_401_UNAUTHORIZED,
+        detail="Недействительный refresh-токен",
+        headers={"WWW-Authenticate": "Bearer"},
+    )
+
+    refresh_token_value = get_refresh_token_from_cookie(request)
+    if not refresh_token_value:
+        raise credentials_exception
+
+    token_data = verify_refresh_token(refresh_token_value, credentials_exception)
+    db_user = db.query(User).filter(User.login == token_data.login).first()
+    if not db_user or not db_user.is_active:
+        raise credentials_exception
+
+    access_token_expires = timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
+    access_token = create_access_token(
+        data={"sub": db_user.login}, expires_delta=access_token_expires
+    )
+    new_refresh_token = create_refresh_token(data={"sub": db_user.login})
+
+    set_auth_cookies(response, access_token, new_refresh_token)
+
+    return {
+        "access_token": access_token,
+        "token_type": "bearer",
+        "expires_in": ACCESS_TOKEN_EXPIRE_MINUTES * 60,
+    }
 
 @router.post("/logout")
 async def logout(response: Response):
     """Выход из системы"""
-    response.delete_cookie(
-        key="access_token",
-        domain="localhost"
-    )
+    clear_auth_cookies(response)
     return {"message": "Успешный выход из системы"}
 
 @router.get("/me", response_model=UserResponse)
